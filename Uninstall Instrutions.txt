@@ -1,0 +1,9 @@
+Q. How to uninstall the applications from an android emulator?
+
+Ans: - Make sure the emulator is running. Then follow the following steps:
+1. Go to 'tools' directory in command (for example: cd C:\Programs\Android\android-sdk\platform-tools)
+2. adb shell <enter>
+3. cd /data/app
+4. ls (It will display all the .apk installed in your emulator)
+5. Remove .apk file using the command: rm *.apk (for example: rm com.devamatre*.apk)
+6. exit
