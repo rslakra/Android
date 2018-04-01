@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Orientation</string>
+    <string name="info">This activity shows, how to handle orientation in Android app! You have to configure \'configChanges=\"orientation|screenSize|keyboardHidden\"\' in AndroidManifest.xml file.</string>
+    <string name="action_settings">Settings</string>
+
+</resources>
