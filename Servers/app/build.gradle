@@ -4,10 +4,8 @@ android {
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.rslakra.android.servers"
-        minSdkVersion 21
-        targetSdkVersion 21
-        versionCode 1
-        versionName "1.0"
+        minSdkVersion 22
+        targetSdkVersion 22
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
