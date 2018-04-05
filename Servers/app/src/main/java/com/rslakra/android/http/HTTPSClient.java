@@ -28,24 +28,31 @@
  *****************************************************************************/
 package com.rslakra.android.http;
 
-import com.rslakra.android.logger.LogHelper;
+import android.content.Context;
 
-import java.io.BufferedReader;
+import com.rslakra.android.logger.LogHelper;
+import com.rslakra.android.servers.HTTPApplication;
+
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.URL;
+import java.security.KeyStore;
 
 import javax.net.SocketFactory;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
  * @author Rohtash Singh Lakra
- *         <p>
- *         https://127.0.0.1:7516/
+ * <p>
+ * https://127.0.0.1:7516/
  */
 public class HTTPSClient {
     
@@ -56,6 +63,7 @@ public class HTTPSClient {
     
     private String host;
     private int port;
+    private final Context mContext;
     
     /**
      * @param host
@@ -65,77 +73,118 @@ public class HTTPSClient {
         LogHelper.i(LOG_TAG, "HTTPSClient(" + host + ", " + port + ")");
         this.host = host;
         this.port = port;
+        mContext = HTTPApplication.getInstance().getApplicationContext();
     }
     
-    // Start to run the server
-    public void run() {
+    /**
+     * @return
+     * @throws Exception
+     */
+    private SSLContext makeSSLContext() throws Exception {
+        // Load CAs from an InputStream
+        final InputStream certStream = LogHelper.readAssets(mContext, "client.pem");
+        // Create a KeyStore containing our trusted CAs
+        final KeyStore trustStore = SSLHelper.loadPEMTrustStore(certStream);
+        
+        // Create a TrustManager that trusts the CAs in our KeyStore
+        TrustManagerFactory trustManagerFactory = SSLHelper.initTrustManager(trustStore);
+        
+        // Create an SSLContext that uses our TrustManager
+        final SSLContext sslContext = SSLContext.getInstance("TLS");
+        LogHelper.d(LOG_TAG, "sslContext - Protocol:" + sslContext.getProtocol() + ", Provider:" + sslContext.getProvider());
+        sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+        
+        return sslContext;
+    }
+    
+    /**
+     * @throws Exception
+     */
+    private void testSSLSocketClient() {
         try {
-            final boolean useSocket = true;
-            if(useSocket) {
-                LogHelper.d(LOG_TAG, "SSL client started");
-                // Open SSLSocket
-                SocketFactory socketFactory = SSLSocketFactory.getDefault();
-                SSLSocket sslSocket = (SSLSocket) socketFactory.createSocket(this.host, this.port);
-                new ClientThread(sslSocket).start();
-            } else {
-                new TestURLConnection().testConnection(false);
+            // Open SSLSocket
+            final SocketFactory socketFactory = makeSSLContext().getSocketFactory();
+            final SSLSocket sslSocket = (SSLSocket) socketFactory.createSocket(this.host, this.port);
+            
+            // Start handshake
+            sslSocket.startHandshake();
+            
+            /**
+             * Verify that the certificate hostname is for [localhost],
+             * This is due to lack of SNI support in the current SSLSocket.
+             */
+            final HostnameVerifier hostNameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
+            final SSLSession sslSession = sslSocket.getSession();
+            if(!hostNameVerifier.verify("localhost", sslSession)) {
+                throw new SSLHandshakeException("Expected [localhost], found:" + sslSession.getPeerPrincipal());
             }
+            
+            SSLHelper.logServerCertificate(sslSocket);
+            SSLHelper.logSocketInfo(sslSocket);
+            
+            final PrintWriter outWriter = new PrintWriter(new OutputStreamWriter(sslSocket.getOutputStream()));
+            
+            // Send request to server.
+            outWriter.println("Hello Server");
+            outWriter.println();
+            outWriter.flush();
+            
+            LogHelper.d(LOG_TAG, "Response:" + SSLHelper.readStream(sslSocket.getInputStream(), true));
+            sslSocket.close();
         } catch(Exception ex) {
             LogHelper.e(LOG_TAG, ex);
         }
     }
     
-    // Thread handling the socket to server
-    private class ClientThread extends Thread {
-        /**
-         * sslSocket
-         */
-        private final SSLSocket mSSLSocket;
-        
-        ClientThread(final SSLSocket sslSocket) {
-            LogHelper.d(LOG_TAG, "ClientThread(" + sslSocket + ")");
-            this.mSSLSocket = sslSocket;
+    /**
+     * @throws IOException
+     */
+    private void testURLConnection(final boolean useSocketFactory) throws IOException {
+        try {
+            LogHelper.d(LOG_TAG, "testConnection()");
+            final URL url = Utils.newURL(Utils.getHost(), Utils.getPort(), true);
+            final HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
+            
+            // Create socket factory
+            if(useSocketFactory) {
+                urlConnection.setSSLSocketFactory(makeSSLContext().getSocketFactory());
+            } else {
+                LogHelper.i(LOG_TAG, "This will fail because the connection is opened with self-signed certificate.");
+            }
+            // Initialize configuration
+            //            urlConnection.setHostnameVerifier(new DefaultHostNameVerifier());
+            
+            urlConnection.setRequestMethod("GET");
+            urlConnection.connect();
+            
+            LogHelper.i(LOG_TAG, "ResponseCode:" + urlConnection.getResponseCode());
+            LogHelper.d(LOG_TAG, "Response:" + SSLHelper.readStream(urlConnection.getInputStream(), true));
+        } catch(Exception ex) {
+            LogHelper.e(LOG_TAG, ex);
         }
         
-        public void run() {
-            try {
-                LogHelper.d(LOG_TAG, "supportedCipherSuites:" + LogHelper.toString(mSSLSocket.getSupportedCipherSuites(), true));
-                LogHelper.d(LOG_TAG, "supportedProtocols:" + LogHelper.toString(mSSLSocket.getSupportedProtocols(), true));
-                mSSLSocket.setEnabledCipherSuites(mSSLSocket.getSupportedCipherSuites());
-                
-                // Start handshake
-                mSSLSocket.startHandshake();
-                
-                // Get session after the connection is established
-                final SSLSession sslSession = mSSLSocket.getSession();
-                LogHelper.d(LOG_TAG, "SSLSession:");
-                LogHelper.d(LOG_TAG, "Protocol:" + sslSession.getProtocol());
-                LogHelper.d(LOG_TAG, "Cipher Suite:" + sslSession.getCipherSuite());
-                
-                // Start handling application content
-                InputStream inputStream = mSSLSocket.getInputStream();
-                OutputStream outputStream = mSSLSocket.getOutputStream();
-                
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-                PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream));
-                
-                // Write data
-                printWriter.println("Hello Server");
-                printWriter.println();
-                printWriter.flush();
-                
-                String line = null;
-                while((line = bufferedReader.readLine()) != null) {
-                    LogHelper.d(LOG_TAG, "line:" + line);
-                    if(line.trim().equals("HTTP/1.1 200\r\n")) {
-                        break;
-                    }
-                }
-                
-                mSSLSocket.close();
-            } catch(Exception ex) {
-                LogHelper.e(LOG_TAG, ex);
-            }
+    }
+    
+    // Start to run the server
+    public void run() {
+        try {
+            LogHelper.i(LOG_TAG, "\n\n");
+            LogHelper.i(LOG_TAG, "TEST SSL SOCKET CONNECTION");
+            LogHelper.i(LOG_TAG, "\n\n");
+            testSSLSocketClient();
+            
+            LogHelper.i(LOG_TAG, "\n\n");
+            LogHelper.i(LOG_TAG, "TEST SSL URL CONNECTION");
+            LogHelper.i(LOG_TAG, "\n\n");
+            testURLConnection(true);
+            
+            LogHelper.i(LOG_TAG, "\n\n");
+            LogHelper.i(LOG_TAG, "TEST SSL URL CONNECTION WITHOUT SSL FACTORY.");
+            LogHelper.i(LOG_TAG, "\n\n");
+            /** This will fail because the connection is opened with self-signed certificate. */
+            testURLConnection(false);
+        } catch(Exception ex) {
+            LogHelper.e(LOG_TAG, ex);
         }
     }
 }

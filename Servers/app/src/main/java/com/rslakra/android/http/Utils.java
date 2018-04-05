@@ -239,7 +239,7 @@ public final class Utils {
             
             // Initialize SSLContext
             SSLContext sslContext = SSLContext.getInstance(PROTOCOLS[3]);
-            LogHelper.d(LOG_TAG, "sslContext - Protocol:" + sslContext.getProtocol() + "Provider:" + sslContext.getProvider());
+            LogHelper.d(LOG_TAG, "sslContext - Protocol:" + sslContext.getProtocol() + ", Provider:" + sslContext.getProvider());
             sslContext.init(keyManagers, trustManagers, new SecureRandom());
             
             return sslContext;

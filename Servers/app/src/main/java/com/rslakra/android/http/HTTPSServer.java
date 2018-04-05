@@ -28,20 +28,22 @@
  *****************************************************************************/
 package com.rslakra.android.http;
 
+import android.content.Context;
+
 import com.rslakra.android.logger.LogHelper;
 import com.rslakra.android.servers.HTTPApplication;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.security.KeyStore;
 
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 
 /**
@@ -56,6 +58,7 @@ public class HTTPSServer {
     
     private int port;
     private boolean mRunning = false;
+    private final Context mContext;
     
     /**
      * @param port
@@ -63,6 +66,7 @@ public class HTTPSServer {
     public HTTPSServer(int port) {
         LogHelper.i(LOG_TAG, "HTTPSServer(" + port + ")");
         this.port = port;
+        mContext = HTTPApplication.getInstance().getApplicationContext();
     }
     
     /**
@@ -84,29 +88,57 @@ public class HTTPSServer {
     }
     
     /**
+     * This means:
+     * 1. You create a Keystore which reads the path of the key created previously.
+     * 2. Create an SSLConext, in this case using TLS and finally a SocketFactory will create your socket which
+     * happens to be an SSLSocket using an SSLServerSocket.
+     * 3. BufferedWriter and BufferedReader are just to write messages back and forth between server and client.
+     * Important: after an out.write you must create a newline by “\n”.
+     */
+    private void runHTTPSServer() {
+        try {
+            final Context context = HTTPApplication.getInstance().getApplicationContext();
+            final InputStream keyStoreStream = LogHelper.readAssets(context, "client.bks");
+            final KeyStore keyStore = SSLHelper.initKeyStore(keyStoreStream, SSLHelper.PASSWORD);
+            
+            // Create key manager
+            final KeyManagerFactory keyManagerFactory = SSLHelper.initKeyManager(keyStore, SSLHelper.PASSWORD.toCharArray());
+            
+            // Initialize SSLContext
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            LogHelper.d(LOG_TAG, "sslContext - Protocol:" + sslContext.getProtocol() + ", Provider:" + sslContext.getProvider());
+            sslContext.init(keyManagerFactory.getKeyManagers(), null, null);
+            
+            // Create server socket factory
+            final SSLServerSocketFactory serverSocketFactory = sslContext.getServerSocketFactory();
+            final SSLServerSocket sslServerSocket = (SSLServerSocket) serverSocketFactory.createServerSocket(this.port);
+            setRunning(true);
+            LogHelper.i(LOG_TAG, "Starting SSL Server ...");
+            while(isRunning()) {
+                try {
+                    final SSLSocket mClientSocket = (SSLSocket) sslServerSocket.accept();
+                    //                SSLHelper.logSocketInfo(mClientSocket);
+                    
+                    // Start the new thread for each client.
+                    new ServerThread(mClientSocket).start();
+                } catch(Exception ex) {
+                    LogHelper.e(LOG_TAG, ex);
+                }
+            }
+            
+            sslServerSocket.close();
+        } catch(Exception ex) {
+            LogHelper.e(LOG_TAG, ex);
+        }
+    }
+    
+    /**
      * Start to run the server
      */
     public void run() {
         LogHelper.i(LOG_TAG, "run()");
         try {
-            final SSLContext sslContext = Utils.createServerSSLContext(HTTPApplication.getInstance().getApplicationContext());
-//            final SSLContext sslContext = Utils.newSSLContext(HTTPApplication.getInstance().getApplicationContext());
-//            // Create server socket factory
-            SSLServerSocketFactory sslServerSocketFactory = sslContext.getServerSocketFactory();
-            // Create server socket
-//            SSLServerSocket sslServerSocket = (SSLServerSocket) sslServerSocketFactory.createServerSocket(this.port);
-            SSLServerSocket sslServerSocket = (SSLServerSocket) sslServerSocketFactory.createServerSocket(this.port);
-            setRunning(true);
-            LogHelper.i(LOG_TAG, "SSL server has started!");
-            while(isRunning()) {
-                try {
-                    final SSLSocket sslSocket = (SSLSocket) sslServerSocket.accept();
-                    // Start the server thread
-                    new ServerThread(sslSocket).start();
-                } catch(Exception ex) {
-                    LogHelper.e(LOG_TAG, ex);
-                }
-            }
+            runHTTPSServer();
         } catch(Exception ex) {
             LogHelper.e(LOG_TAG, ex);
         }
@@ -117,14 +149,15 @@ public class HTTPSServer {
      */
     private class ServerThread extends Thread {
         
-        private final SSLSocket mSSLSocket;
+        /** mClientSocket */
+        private final SSLSocket mClientSocket;
         
         /**
-         * @param sslSocket
+         * @param mClientSocket
          */
-        ServerThread(final SSLSocket sslSocket) {
-            LogHelper.d(LOG_TAG, "ServerThread(" + sslSocket + ")");
-            this.mSSLSocket = sslSocket;
+        ServerThread(final SSLSocket mClientSocket) {
+            LogHelper.d(LOG_TAG, "ServerThread(" + mClientSocket + ")");
+            this.mClientSocket = mClientSocket;
         }
         
         /**
@@ -132,43 +165,29 @@ public class HTTPSServer {
          */
         public void run() {
             try {
-                LogHelper.d(LOG_TAG, "isBound:" + mSSLSocket.isBound());
-                LogHelper.d(LOG_TAG, "isClosed:" + mSSLSocket.isClosed());
-                LogHelper.d(LOG_TAG, "isConnected:" + mSSLSocket.isConnected());
-                LogHelper.d(LOG_TAG, "supportedCipherSuites:" + LogHelper.toString(mSSLSocket.getSupportedCipherSuites(), true));
-                LogHelper.d(LOG_TAG, "supportedProtocols:" + LogHelper.toString(mSSLSocket.getSupportedProtocols(), true));
-                mSSLSocket.setEnabledCipherSuites(mSSLSocket.getSupportedCipherSuites());
+                mClientSocket.setEnabledCipherSuites(mClientSocket.getSupportedCipherSuites());
                 
                 // Start handshake
-                mSSLSocket.startHandshake();
-                
-                // Get session after the connection is established
-                final SSLSession mSSLSession = mSSLSocket.getSession();
-                
-                LogHelper.d(LOG_TAG, "SSLSession:");
-                LogHelper.d(LOG_TAG, "Protocol:" + mSSLSession.getProtocol());
-                LogHelper.d(LOG_TAG, "Cipher Suite:" + mSSLSession.getCipherSuite());
+                mClientSocket.startHandshake();
                 
                 // Start handling application content
-                InputStream inputStream = mSSLSocket.getInputStream();
-                OutputStream outputStream = mSSLSocket.getOutputStream();
+                final BufferedReader reqReader = new BufferedReader(new InputStreamReader(mClientSocket.getInputStream()));
+                final PrintWriter resWriter = new PrintWriter(new OutputStreamWriter(mClientSocket.getOutputStream()));
                 
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-                PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(outputStream));
-                
-                String line = null;
-                while((line = bufferedReader.readLine()) != null) {
-                    LogHelper.d(LOG_TAG, "line:" + line);
-                    if(line.trim().isEmpty()) {
-                        break;
-                    }
+                String line = reqReader.readLine();
+                while(!LogHelper.isNullOrEmpty(line)) {
+                    LogHelper.d(LOG_TAG, "Client Message:" + line);
+                    line = reqReader.readLine();
                 }
+                reqReader.close();
                 
                 // Write data
-                printWriter.print("HTTP/1.1 200\r\n");
-                printWriter.flush();
+                resWriter.print("HTTP/1.1 200\r\n");
+                resWriter.print("\r\n");
+                resWriter.flush();
+                resWriter.close();
                 
-                mSSLSocket.close();
+                mClientSocket.close();
             } catch(Exception ex) {
                 LogHelper.e(LOG_TAG, ex);
             }
