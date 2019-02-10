@@ -27,6 +27,16 @@ task clean(type: Delete) {
 
 
 ext {
+    // Build Versions
+    versionCode = 1
+    versionName = "1.0"
+
+    // SDK Details
+    compileSdkVersion = 28
+    minSdkVersion = 24
+    targetSdkVersion = 26
+
+    // Library Versions
     roomVersion = '1.1.1'
     archLifecycleVersion = '1.1.1'
 }
