@@ -3,6 +3,8 @@
     <string name="action_settings">Settings</string>
 
     <string name="hint_word">Word...</string>
-    <string name="button_save">Save</string>
+    <string name="addButton">Add</string>
+    <string name="updateButton">Update</string>
+    <string name="deleteButton">Delete</string>
     <string name="empty_not_saved">Word not saved because it is empty.</string>
 </resources>

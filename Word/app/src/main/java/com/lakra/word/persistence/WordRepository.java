@@ -4,6 +4,7 @@ import android.app.Application;
 import android.arch.lifecycle.LiveData;
 import android.os.AsyncTask;
 
+import com.lakra.word.ActionType;
 import com.lakra.word.dao.WordDao;
 import com.lakra.word.dao.WordRoomDatabase;
 
@@ -34,12 +35,18 @@ public class WordRepository {
     /**
      *
      */
-    private static final class InsertAsyncTask extends AsyncTask<Word, Void, Void> {
+    private static final class ContentAsyncTask extends AsyncTask<Word, Void, Void> {
 
+        private ActionType mActionType;
         private WordDao mAsyncTaskDao;
 
-        InsertAsyncTask(WordDao dao) {
-            mAsyncTaskDao = dao;
+        /**
+         * @param wordDao
+         * @param actionType
+         */
+        ContentAsyncTask(WordDao wordDao, ActionType actionType) {
+            mActionType = actionType;
+            mAsyncTaskDao = wordDao;
         }
 
         /**
@@ -48,7 +55,19 @@ public class WordRepository {
          */
         @Override
         protected Void doInBackground(final Word... params) {
-            mAsyncTaskDao.insert(params[0]);
+            switch (mActionType) {
+                case ADD:
+                    mAsyncTaskDao.insert(params[0]);
+                    break;
+                case UPDATE:
+                    mAsyncTaskDao.update(params[0]);
+                    break;
+                case DELETE:
+                    mAsyncTaskDao.delete(params[0]);
+                    break;
+                default:
+                    break;
+            }
             return null;
         }
     }
@@ -56,8 +75,7 @@ public class WordRepository {
     /**
      * @param word
      */
-    public void insert(Word word) {
-        new InsertAsyncTask(mWordDao).execute(word);
+    public void handleAction(ActionType actionType, Word word) {
+        new ContentAsyncTask(mWordDao, actionType).execute(word);
     }
-
 }

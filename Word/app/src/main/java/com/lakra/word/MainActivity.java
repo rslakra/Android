@@ -10,7 +10,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
     public static final int NEW_WORD_ACTIVITY_REQUEST_CODE = 1;
 
     private WordViewModel mWordViewModel;
-    private WordListAdapter mAdapter;
+    private WordListAdapter mWordListAdapter;
 
     /**
      * @param savedInstanceState
@@ -45,19 +44,21 @@ public class MainActivity extends AppCompatActivity {
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
+            /**
+             *
+             * @param view
+             */
             @Override
             public void onClick(View view) {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAction("Action", null).show();
-                Intent intent = new Intent(MainActivity.this, NewWordActivity.class);
+                Intent intent = new Intent(MainActivity.this, WordActivity.class);
                 startActivityForResult(intent, NEW_WORD_ACTIVITY_REQUEST_CODE);
             }
         });
 
         //recycler view
         RecyclerView mRecyclerView = findViewById(R.id.recyclerview);
-        mAdapter = new WordListAdapter(this);
-        mRecyclerView.setAdapter(mAdapter);
+        mWordListAdapter = new WordListAdapter(this);
+        mRecyclerView.setAdapter(mWordListAdapter);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         mWordViewModel = ViewModelProviders.of(this).get(WordViewModel.class);
@@ -70,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onChanged(@Nullable List<Word> words) {
                 // Update the cached copy of the words in the adapter.
-                mAdapter.setWords(words);
+                mWordListAdapter.setWords(words);
             }
         });
     }
@@ -85,8 +86,9 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == NEW_WORD_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK) {
-            Word word = new Word(data.getStringExtra(NewWordActivity.EXTRA_REPLY));
-            mWordViewModel.insert(word);
+            ActionType actionType = ActionType.valueOf(data.getStringExtra(Constants.ACTION));
+            String value = data.getStringExtra(Constants.VALUE);
+            mWordViewModel.handleAction(actionType, new Word(value));
         } else {
             Toast.makeText(
                     getApplicationContext(),

@@ -17,7 +17,7 @@ public interface WordDao {
     /**
      * @return
      */
-    @Query("select * from Words order by word ASC")
+    @Query("select * from Words order by Word ASC")
     public LiveData<List<Word>> getWords();
 
     /**
@@ -37,8 +37,5 @@ public interface WordDao {
      */
     @Delete
     public void delete(Word... words);
-
-    @Query("DELETE FROM Words")
-    public abstract void deleteAll();
 
 }

@@ -35,9 +35,10 @@ public class WordViewModel extends AndroidViewModel {
     }
 
     /**
+     * @param actionType
      * @param word
      */
-    public void insert(Word word) {
-        mWordRepository.insert(word);
+    public void handleAction(ActionType actionType, Word word) {
+        mWordRepository.handleAction(actionType, word);
     }
 }

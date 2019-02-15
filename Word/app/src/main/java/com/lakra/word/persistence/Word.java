@@ -7,12 +7,12 @@ import android.support.annotation.NonNull;
 
 @Entity(tableName = "Words")
 public class Word {
-//    @PrimaryKey(autoGenerate = true)
-//    private int id;
 
-    @PrimaryKey
+    @PrimaryKey(autoGenerate = true)
+    private int id;
+
     @NonNull
-    @ColumnInfo(name = "word")
+    @ColumnInfo(name = "Word")
     private String mWord;
 
     /**
@@ -22,19 +22,19 @@ public class Word {
         this.mWord = word;
     }
 
-//    /**
-//     * @return
-//     */
-//    public int getId() {
-//        return id;
-//    }
-//
-//    /**
-//     * @param id
-//     */
-//    public void setId(int id) {
-//        this.id = id;
-//    }
+    /**
+     * @return
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * @param id
+     */
+    public void setId(int id) {
+        this.id = id;
+    }
 
     /**
      * @return

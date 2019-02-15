@@ -23,7 +23,7 @@
         </activity>
 
         <!-- Child Activity -->
-        <activity android:name="com.lakra.word.NewWordActivity"></activity>
+        <activity android:name="com.lakra.word.WordActivity"></activity>
     </application>
 
 </manifest>
