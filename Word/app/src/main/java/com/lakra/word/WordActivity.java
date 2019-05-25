@@ -39,7 +39,7 @@ public class WordActivity extends AppCompatActivity {
                     setResult(RESULT_CANCELED, replyIntent);
                 } else {
                     String word = mWordEditText.getText().toString();
-                    replyIntent.putExtra(Constants.ACTION, ActionType.ADD);
+                    replyIntent.putExtra(Constants.ACTION, ActionType.ADD.toString());
                     replyIntent.putExtra(Constants.VALUE, word);
                     setResult(RESULT_OK, replyIntent);
                 }
@@ -60,7 +60,7 @@ public class WordActivity extends AppCompatActivity {
                     setResult(RESULT_CANCELED, replyIntent);
                 } else {
                     String word = mWordEditText.getText().toString();
-                    replyIntent.putExtra(Constants.ACTION, ActionType.UPDATE);
+                    replyIntent.putExtra(Constants.ACTION, ActionType.UPDATE.toString());
                     replyIntent.putExtra(Constants.VALUE, word);
                     setResult(RESULT_OK, replyIntent);
                 }
@@ -82,7 +82,7 @@ public class WordActivity extends AppCompatActivity {
                     setResult(RESULT_CANCELED, replyIntent);
                 } else {
                     String word = mWordEditText.getText().toString();
-                    replyIntent.putExtra(Constants.ACTION, ActionType.DELETE);
+                    replyIntent.putExtra(Constants.ACTION, ActionType.DELETE.toString());
                     replyIntent.putExtra(Constants.VALUE, word);
                     setResult(RESULT_OK, replyIntent);
                 }
