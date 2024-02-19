@@ -58,9 +58,9 @@ open class WebViewActivity : AppCompatActivity() {
         if (networkUtils.haveNetworkConnection(this@WebViewActivity)) {
             loadWeb(BuildConfig.URL)
         } else {
-            imgv_network_error.visibility = View.GONE
+//            imgv_network_error.visibility = View.GONE
             webView.visibility = View.VISIBLE
-            overlayView.visibility = View.VISIBLE
+//            overlayView.visibility = View.VISIBLE
             connectionLostAlert("Quit", BuildConfig.URL)
         }
         Log.d(TAG, "-onCreate()")
@@ -109,25 +109,25 @@ open class WebViewActivity : AppCompatActivity() {
         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
             Log.d(TAG, "+onPageStarted(" + url + ")")
             if (networkUtils.haveNetworkConnection(this@WebViewActivity)) {
-                imgv_network_error.visibility = View.GONE
+//                imgv_network_error.visibility = View.GONE
                 webView.visibility = View.VISIBLE
-                overlayView.visibility = View.VISIBLE
+//                overlayView.visibility = View.VISIBLE
                 super.onPageStarted(view, url, favicon)
             } else {
                 webView.visibility = View.GONE
-                imgv_network_error.setVisibility(View.VISIBLE)
-                overlayView.visibility = View.VISIBLE
+//                imgv_network_error.setVisibility(View.VISIBLE)
+//                overlayView.visibility = View.VISIBLE
                 connectionLostAlert("Quit", url)
             }
             Log.d(TAG, "-onPageStarted()")
         }
 
         override fun onPageFinished(view: WebView, url: String) {
-            Log.d(TAG, "+onPageFinished(" + url + ")")
+            Log.d(TAG, "+onPageFinished(), url:" + url)
             if (networkUtils.haveNetworkConnection(this@WebViewActivity)) {
-                webView.visibility = View.VISIBLE
-                overlayView.visibility = View.GONE
+//                overlayView.visibility = View.GONE
                 super.onPageFinished(view, url)
+                webView.visibility = View.VISIBLE
             }
             Log.d(TAG, "-onPageFinished()")
         }
@@ -139,8 +139,8 @@ open class WebViewActivity : AppCompatActivity() {
         ) {
             try {
                 webView.visibility = View.GONE
-                imgv_network_error.visibility = View.VISIBLE
-                overlayView.visibility = View.VISIBLE
+//                imgv_network_error.visibility = View.VISIBLE
+//                overlayView.visibility = View.VISIBLE
             } catch (e: Exception) {
                 Log.d("error", e.localizedMessage);
                 e.printStackTrace()

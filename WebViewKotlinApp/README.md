@@ -8,17 +8,17 @@ Having features.
   - Network Change / BroadcastReceiver  (android.net.conn.CONNECTIVITY_CHANGE)
   - AlertDialog.Builder
 ```
-# How to run a sample
+## How to run a sample
 - Clone or download the project open it with Android Studio compile and run it will work.
 
 
-# Images
+### Images
 <img src="./screens/webview_app_screen.png" width="200"/> <img src="./screens/back_event.png" width="200"/>
 <br/>
 
 
-# Author
+## Author
 - Rohtash Lakra
 
-# License
+## License
 Free
